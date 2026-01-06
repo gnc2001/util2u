@@ -1,48 +1,46 @@
 <?php
 require_once 'config.php';
 
-// Consulta combinada de produtos e livros - COM imgprincipal
-$query = "
-    (SELECT 
+// CONSULTA CORRIGIDA - MOSTRA TUDO, mesmo sem imagem
+$query_produtos = "
+    SELECT 
         'produto' as tipo,
         id,
         nome as titulo,
-        COALESCE(NULLIF(imgprincipal, ''), icone) as imagem_principal,  -- PRIMEIRA PRIORIDADE: imgprincipal
+        COALESCE(NULLIF(imgprincipal, ''), icone, 'img/sem-foto.jpg') as imagem_principal,
         status,
         olx1, olx2, ml1, ml2, ev, enjoei, amazon, shopee
-     FROM geral 
-     WHERE (excluido IS NULL OR excluido = 0)
-     AND status IN ('disponivel', 'doacao')
-     ORDER BY id DESC)
-    
-    UNION ALL
-    
-    (SELECT 
+    FROM geral 
+    WHERE (excluido IS NULL OR excluido = 0)
+    AND status IN ('disponivel', 'doacao')
+    ORDER BY id DESC
+    LIMIT 30
+";
+
+$query_livros = "
+    SELECT 
         'livro' as tipo,
         ID as id,
         titulo,
-        COALESCE(NULLIF(imgprincipal, ''), icone) as imagem_principal,  -- PRIMEIRA PRIORIDADE: imgprincipal
+        COALESCE(NULLIF(imgprincipal, ''), icone, 'img/sem-foto.jpg') as imagem_principal,
         CASE 
             WHEN vendido = 1 THEN 'vendido'
             WHEN perdido = 1 THEN 'vendido'
             ELSE 'disponivel'
         END as status,
         olx1, olx2, ml1, ml2, ev, enjoei, amazon, shopee
-     FROM livros 
-     WHERE (vendido IS NULL OR vendido = 0) 
-     AND (perdido IS NULL OR perdido = 0)
-     ORDER BY ID DESC)
-    
-    ORDER BY id DESC
-    LIMIT 40
+    FROM livros 
+    WHERE (vendido IS NULL OR vendido = 0) 
+    AND (perdido IS NULL OR perdido = 0)
+    ORDER BY ID DESC
+    LIMIT 30
 ";
 
-$stmt = $pdo->prepare($query);
-$stmt->execute();
-$itens = $stmt->fetchAll();
-
-// Para debug - remover depois
-// echo "<pre>"; print_r($itens); echo "</pre>";
+$produtos = $pdo->query($query_produtos)->fetchAll();
+$livros = $pdo->query($query_livros)->fetchAll();
+$itens = array_merge($produtos, $livros);
+usort($itens, function($a, $b) { return $b['id'] - $a['id']; });
+$itens = array_slice($itens, 0, 60); // Aumentei para 60 itens
 ?>
 
 <!DOCTYPE html>
@@ -50,19 +48,19 @@ $itens = $stmt->fetchAll();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2U - Usados & Úteis</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Grande Desapego | Vendas & Doações</title>
+    <link rel="stylesheet" href="style.css?v=2">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <!-- PRIMEIRA FAIXA: Cabeçalho -->
+    <!-- FAIXA 1 SIMPLIFICADA -->
     <header class="faixa-1">
-        <div class="logo-container">
-            <img src="img/logo2Upq.png" alt="Logo">
-      </div>
+        <div class="logo-simples">
+            <img src="img/logo2Upq.png" alt="Grande Desapego" class="logo-transparente">
+        </div>
     </header>
 
-    <!-- SEGUNDA FAIXA: Filtros -->
+    <!-- FAIXA 2 - Filtros -->
     <section class="faixa-2">
         <div class="filtros-container">
             <div class="contador-total">
@@ -88,16 +86,15 @@ $itens = $stmt->fetchAll();
         </div>
     </section>
 
-    <!-- TERCEIRA FAIXA: Grid de produtos -->
+    <!-- FAIXA 3 - Grid 6 por linha -->
     <main class="faixa-3">
         <?php if(empty($itens)): ?>
             <div class="sem-itens">
                 <i class="fas fa-inbox" style="font-size: 4rem; color: #ccc;"></i>
                 <h2>Nenhum item disponível no momento</h2>
-                <p>Em breve teremos novos itens para venda e doação.</p>
             </div>
         <?php else: ?>
-            <div class="grid-container" id="grid-produtos">
+            <div class="grid-container-6" id="grid-produtos">
                 <?php foreach ($itens as $item): ?>
                     <?php 
                     $isDoacao = ($item['status'] == 'doacao');
@@ -109,54 +106,36 @@ $itens = $stmt->fetchAll();
                     }
                     ?>
                     
-                    <div class="item-card" 
+                    <div class="item-card-6" 
                          data-tipo="<?= $item['tipo'] ?>" 
                          data-status="<?= $item['status'] ?>"
                          data-id="<?= $item['id'] ?>">
                         
-                        <!-- Badge de Doação (AGORA MAIOR E MAIS VISÍVEL) -->
+                        <!-- Badge apenas para DOAÇÃO (vermelho) -->
                         <?php if($isDoacao): ?>
-                            <div class="badge-doacao">
-                                <i class="fas fa-gift"></i> DOAÇÃO
+                            <div class="badge-doacao-simples">
+                                DOAÇÃO
                             </div>
                         <?php endif; ?>
                         
-                        <!-- Badge Livro -->
-                        <?php if($item['tipo'] == 'livro'): ?>
-                            <div class="badge-livro">
-                                <i class="fas fa-book"></i> LIVRO
-                            </div>
-                        <?php endif; ?>
-                        
-                        <!-- Imagem principal (CLICÁVEL para página de detalhes) -->
-                        <a href="produto.php?tipo=<?= $item['tipo'] ?>&id=<?= $item['id'] ?>" class="imagem-link">
-                            <div class="imagem-container">
-                                <?php if(!empty($item['imagem_principal'])): ?>
-                                    <img src="<?= htmlspecialchars($item['imagem_principal']) ?>" 
-                                         alt="<?= htmlspecialchars($item['titulo']) ?>"
-                                         class="imagem-principal"
-                                         onerror="this.onerror=null; this.src='img/sem-foto.jpg';">
-                                <?php else: ?>
-                                    <img src="img/sem-foto.jpg" alt="Sem foto" class="imagem-principal">
-                                <?php endif; ?>
-                                
-                                <!-- Overlay para zoom -->
-                                <div class="imagem-overlay">
-                                    <i class="fas fa-search-plus"></i>
-                                </div>
+                        <!-- Imagem -->
+                        <a href="produto.php?tipo=<?= $item['tipo'] ?>&id=<?= $item['id'] ?>" class="imagem-link-6">
+                            <div class="imagem-container-6">
+                                <img src="<?= htmlspecialchars($item['imagem_principal']) ?>" 
+                                     alt="<?= htmlspecialchars($item['titulo']) ?>"
+                                     class="imagem-principal-6"
+                                     onerror="this.onerror=null; this.src='img/sem-foto.jpg';">
                             </div>
                         </a>
                         
-                        <!-- Título (agora com mais espaço) -->
-                        <h3 class="item-titulo" title="<?= htmlspecialchars($item['titulo']) ?>">
-                            <?= htmlspecialchars(mb_substr($item['titulo'], 0, 60)) ?>
-                            <?= (mb_strlen($item['titulo']) > 60) ? '...' : '' ?>
+                        <!-- Título -->
+                        <h3 class="item-titulo-6" title="<?= htmlspecialchars($item['titulo']) ?>">
+                            <?= htmlspecialchars(mb_substr($item['titulo'], 0, 50)) ?>
+                            <?= (mb_strlen($item['titulo']) > 50) ? '...' : '' ?>
                         </h3>
                         
-                        <!-- REMOVIDO: Campo de preço -->
-                        
-                        <!-- Logos dos marketplaces disponíveis -->
-                        <div class="marketplace-logos">
+                        <!-- Logos dos marketplaces -->
+                        <div class="marketplace-logos-6">
                             <?php if(!empty($marketplaces)): 
                                 $logoMap = [
                                     'olx1' => 'olx.png', 'olx2' => 'olx.png',
@@ -165,44 +144,31 @@ $itens = $stmt->fetchAll();
                                     'amazon' => 'amazon.png', 'shopee' => 'shopee.png'
                                 ];
                                 
-                                // Mostrar até 5 logos
-                                $marketplaces = array_slice($marketplaces, 0, 5);
+                                // Mostrar até 3 logos
+                                $marketplaces = array_slice($marketplaces, 0, 3);
                                 foreach ($marketplaces as $mp):
                                     if(isset($logoMap[$mp])):
                             ?>
                                 <a href="<?= htmlspecialchars($item[$mp]) ?>" 
                                    target="_blank"
-                                   class="mp-link"
+                                   class="mp-link-6"
                                    title="Ver no <?= strtoupper($mp) ?>">
                                     <img src="img/<?= $logoMap[$mp] ?>" 
                                          alt="<?= strtoupper($mp) ?>" 
-                                         class="logo-mp">
+                                         class="logo-mp-6">
                                 </a>
                             <?php 
                                     endif;
                                 endforeach; 
                             else: ?>
-                                <span class="sem-links">Sem links ativos</span>
+                                <span class="sem-links-6">Sem links</span>
                             <?php endif; ?>
                         </div>
-                        
-                        <!-- Botão para página de detalhes -->
-                        <a href="produto.php?tipo=<?= $item['tipo'] ?>&id=<?= $item['id'] ?>" class="btn-detalhes">
-                            <i class="fas fa-eye"></i> Ver detalhes
-                        </a>
                     </div>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
     </main>
-
-    <footer>
-        <div class="footer-content">
-            <p><i class="fas fa-heart" style="color: #e74c3c;"></i> Obrigado por nos ajudar nessa jornada rumo a Portugal!</p>
-            <p class="contato">Dúvidas? <i class="fab fa-whatsapp"></i> WhatsApp: (11) 98765-4321</p>
-            <p class="meta">Meta: <span id="contador-itens"><?= count($itens) ?></span> itens para encontrar novos lares!</p>
-        </div>
-    </footer>
 
     <script src="script.js"></script>
 </body>
