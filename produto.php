@@ -1,339 +1,464 @@
 <?php
-require_once 'config.php';
+// produto.php - Página de detalhes do item
+require_once 'config.php'; // Este fica SOMENTE no servidor
 
+// ========== SEGURANÇA ==========
 $tipo = $_GET['tipo'] ?? '';
-$id = $_GET['id'] ?? 0;
+$id = (int)($_GET['id'] ?? 0);
 
-if (empty($tipo) || empty($id)) {
+// Validar entrada
+if (!in_array($tipo, ['produto', 'livro']) || $id <= 0) {
     header('Location: index.php');
     exit;
 }
 
-// Buscar item específico
-if ($tipo == 'livro') {
-    $query = "SELECT * FROM livros WHERE ID = :id";
-    $tabela = 'livros';
-    $campo_id = 'ID';
+// ========== BUSCAR ITEM PRINCIPAL ==========
+if ($tipo == 'produto') {
+    $query = "SELECT * FROM geral WHERE id = :id AND (excluido IS NULL OR excluido = 0)";
+    $tabela_imagens = 'imagens';
+    $campo_imagem = 'item_id';
 } else {
-    $query = "SELECT * FROM geral WHERE id = :id";
-    $tabela = 'geral';
-    $campo_id = 'id';
+    $query = "SELECT * FROM livros WHERE ID = :id AND (vendido IS NULL OR vendido = 0) AND (perdido IS NULL OR perdido = 0)";
+    $tabela_imagens = 'imagem_livros';
+    $campo_imagem = 'id_livro';
 }
 
 $stmt = $pdo->prepare($query);
 $stmt->execute([':id' => $id]);
-$item = $stmt->fetch(PDO::FETCH_ASSOC);
+$item = $stmt->fetch();
 
+// Se não encontrou, voltar para lista
 if (!$item) {
     header('Location: index.php');
     exit;
 }
 
-// Buscar imagens adicionais
-if ($tipo == 'livro') {
-    $imagens_query = "SELECT caminho FROM imagem_livros WHERE id_livro = :id";
-} else {
-    $imagens_query = "SELECT caminho FROM imagens WHERE item_id = :id";
+// ========== BUSCAR IMAGENS ==========
+$query_imagens = "SELECT caminho FROM $tabela_imagens WHERE $campo_imagem = :id ORDER BY caminho";
+$stmt_imagens = $pdo->prepare($query_imagens);
+$stmt_imagens->execute([':id' => $id]);
+$imagens = $stmt_imagens->fetchAll(PDO::FETCH_COLUMN);
+
+// Adicionar imagem principal no início (se existir)
+$imagem_principal = $tipo == 'produto' ? ($item['imgprincipal'] ?? $item['icone'] ?? '') : ($item['imgprincipal'] ?? $item['icone'] ?? '');
+if ($imagem_principal && !in_array($imagem_principal, $imagens)) {
+    array_unshift($imagens, $imagem_principal);
 }
 
-$imgs_stmt = $pdo->prepare($imagens_query);
-$imgs_stmt->execute([':id' => $id]);
-$imagens = $imgs_stmt->fetchAll(PDO::FETCH_COLUMN);
-
-// Adicionar a imagem principal no início do array
-if (!empty($item['icone'])) {
-    array_unshift($imagens, $item['icone']);
+// Se não tiver nenhuma imagem, usar placeholder
+if (empty($imagens)) {
+    $imagens = ['img/sem-foto.jpg'];
 }
 
-// Marketplaces com links
+// ========== PREPARAR LINKS MARKETPLACE ==========
 $marketplaces = [
-    'olx1' => ['logo' => 'logoolx1pq.png', 'url' => $item['olx1'] ?? ''],
-    'olx2' => ['logo' => 'logoolx2pq.png', 'url' => $item['olx2'] ?? ''],
-    'ml1' => ['logo' => 'logoml1pq.png', 'url' => $item['ml1'] ?? ''],
-    'ml2' => ['logo' => 'logoml2pq.png', 'url' => $item['ml2'] ?? ''],
-    'ev' => ['logo' => 'logoevpq.png', 'url' => $item['ev'] ?? ''],
-    'enjoei' => ['logo' => 'logoenjoeipq.png', 'url' => $item['enjoei'] ?? ''],
-    'amazon' => ['logo' => 'logoamazonpq.png', 'url' => $item['amazon'] ?? ''],
-    'shopee' => ['logo' => 'logoshopeeepq.png', 'url' => $item['shopee'] ?? '']
+    'OLX 1' => ['logo' => 'olx.png', 'url' => $item['olx1'] ?? ''],
+    'OLX 2' => ['logo' => 'olx.png', 'url' => $item['olx2'] ?? ''],
+    'Mercado Livre 1' => ['logo' => 'mercadolivre.png', 'url' => $item['ml1'] ?? ''],
+    'Mercado Livre 2' => ['logo' => 'mercadolivre.png', 'url' => $item['ml2'] ?? ''],
+    'Estante Virtual' => ['logo' => 'estantevirtual.png', 'url' => $item['ev'] ?? ''],
+    'Enjoei' => ['logo' => 'enjoei.png', 'url' => $item['enjoei'] ?? ''],
+    'Amazon' => ['logo' => 'amazon.png', 'url' => $item['amazon'] ?? ''],
+    'Shopee' => ['logo' => 'shopee.png', 'url' => $item['shopee'] ?? '']
 ];
-?>
 
+// Filtrar apenas os que têm URL
+$marketplaces_ativos = array_filter($marketplaces, function($mp) {
+    return !empty($mp['url']);
+});
+
+// ========== HTML ==========
+$titulo_pagina = $tipo == 'produto' ? htmlspecialchars($item['nome']) : htmlspecialchars($item['titulo']);
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($item['titulo'] ?? $item['nome']) ?> - Grande Desapego</title>
+    <title><?= $titulo_pagina ?> - Grande Desapego</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Estilos específicos para página de produto */
-        .produto-detalhe {
+        /* ESTILOS ESPECÍFICOS PARA PÁGINA DE DETALHES */
+        .produto-container {
             max-width: 1200px;
             margin: 2rem auto;
             padding: 0 5%;
         }
         
-        .voltar-link {
-            display: inline-block;
-            margin-bottom: 1.5rem;
-            color: #3498db;
+        .voltar-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #3498db;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
             text-decoration: none;
-            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
         }
         
-        .voltar-link:hover {
-            text-decoration: underline;
+        .voltar-btn:hover {
+            background: #2980b9;
+            transform: translateX(-5px);
         }
         
-        .produto-container {
+        .produto-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
             background: white;
             border-radius: 15px;
             padding: 2rem;
             box-shadow: 0 5px 20px rgba(0,0,0,0.1);
         }
         
-        .produto-header {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 3rem;
-            margin-bottom: 2rem;
-        }
-        
+        /* CARROSSEL */
         .carrossel-container {
-            flex: 1;
-            min-width: 300px;
-            max-width: 500px;
+            position: relative;
         }
         
-        .carrossel-principal {
+        .imagem-principal {
+            width: 100%;
             height: 400px;
-            overflow: hidden;
+            object-fit: contain;
             border-radius: 10px;
+            background: #f8f9fa;
             margin-bottom: 1rem;
         }
         
-        .carrossel-principal img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .carrossel-miniaturas {
+        .miniaturas {
             display: flex;
             gap: 0.5rem;
             overflow-x: auto;
-            padding-bottom: 0.5rem;
+            padding: 0.5rem 0;
         }
         
         .miniatura {
             width: 80px;
             height: 80px;
+            object-fit: cover;
             border-radius: 8px;
-            overflow: hidden;
             cursor: pointer;
             opacity: 0.6;
-            transition: opacity 0.3s;
-            flex-shrink: 0;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
         }
         
-        .miniatura.ativo, .miniatura:hover {
+        .miniatura:hover, .miniatura.ativa {
             opacity: 1;
-            border: 2px solid #3498db;
+            border-color: #3498db;
         }
         
-        .miniatura img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .info-container {
-            flex: 1;
-            min-width: 300px;
-        }
-        
+        /* INFORMAÇÕES */
         .info-container h1 {
-            font-size: 2.2rem;
             color: #2c3e50;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 2.2rem;
         }
         
-        .preco-grande {
-            font-size: 2.5rem;
+        .badge-tipo {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: <?= $tipo == 'produto' ? '#3498db' : '#9b59b6' ?>;
+            color: white;
+            border-radius: 20px;
             font-weight: bold;
-            color: #27ae60;
-            margin: 1rem 0;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
         }
         
-        .preco-doacao-grande {
-            font-size: 2.5rem;
+        .badge-doacao {
+            background: #e74c3c;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
             font-weight: bold;
-            color: #e74c3c;
+            display: inline-block;
+            margin-left: 1rem;
         }
         
         .descricao-box {
             background: #f8f9fa;
             padding: 1.5rem;
             border-radius: 10px;
-            margin: 2rem 0;
+            margin: 1.5rem 0;
             line-height: 1.8;
         }
         
-        .marketplace-links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1.5rem;
+        /* DETALHES ESPECÍFICOS */
+        .detalhes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .detalhe-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #eaeaea;
+        }
+        
+        .detalhe-item strong {
+            display: block;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 0.3rem;
+        }
+        
+        /* MARKETPLACES */
+        .marketplaces-section {
             margin-top: 2rem;
             padding-top: 2rem;
             border-top: 2px solid #eee;
         }
         
-        .mp-link {
+        .marketplaces-section h3 {
+            margin-bottom: 1.5rem;
+            color: #2c3e50;
+        }
+        
+        .marketplaces-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+        
+        .marketplace-link {
             display: flex;
             flex-direction: column;
             align-items: center;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
             text-decoration: none;
-            color: #333;
-            transition: transform 0.3s;
+            color: #2c3e50;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
         }
         
-        .mp-link:hover {
+        .marketplace-link:hover {
+            background: white;
+            border-color: #3498db;
             transform: translateY(-5px);
         }
         
-        .mp-logo {
-            width: 60px;
-            height: 60px;
-            margin-bottom: 0.5rem;
+        .marketplace-link img {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 0.8rem;
         }
         
-        .mp-nome {
-            font-size: 0.9rem;
-            font-weight: bold;
-        }
-        
-        @media (max-width: 768px) {
-            .produto-header {
-                flex-direction: column;
+        /* RESPONSIVIDADE */
+        @media (max-width: 900px) {
+            .produto-content {
+                grid-template-columns: 1fr;
                 gap: 2rem;
             }
             
-            .carrossel-container {
-                max-width: 100%;
+            .imagem-principal {
+                height: 300px;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .detalhes-grid {
+                grid-template-columns: 1fr;
             }
             
-            .carrossel-principal {
-                height: 300px;
+            .marketplaces-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
     </style>
 </head>
 <body>
-    <!-- Cabeçalho reduzido -->
+    <!-- CABEÇALHO SIMPLES -->
     <header class="faixa-1" style="padding: 1rem 5%;">
-        <div class="logo-container" style="flex-direction: row; justify-content: center; gap: 1rem;">
-            <img src="img/logo.png" alt="Logo" class="logo" style="max-width: 60px;">
-            <h1 style="font-size: 1.8rem;">Grande Desapego</h1>
+        <div class="logo-simples">
+            <a href="index.php">
+                <img src="img/logo2Upq.png" alt="Grande Desapego" class="logo-transparente">
+            </a>
         </div>
     </header>
     
-    <main class="produto-detalhe">
-        <a href="index.php" class="voltar-link">
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="produto-container">
+        <!-- BOTÃO VOLTAR -->
+        <a href="index.php" class="voltar-btn">
             <i class="fas fa-arrow-left"></i> Voltar para a lista
         </a>
         
-        <div class="produto-container">
-            <div class="produto-header">
-                <!-- Carrossel -->
-                <div class="carrossel-container">
-                    <div class="carrossel-principal">
-                        <?php if (!empty($imagens)): ?>
-                            <img id="imagem-principal" src="<?= htmlspecialchars($imagens[0]) ?>" 
-                                 alt="<?= htmlspecialchars($item['titulo'] ?? $item['nome']) ?>"
-                                 onerror="this.src='img/sem-foto.jpg'">
-                        <?php else: ?>
-                            <img id="imagem-principal" src="img/sem-foto.jpg" alt="Sem foto">
-                        <?php endif; ?>
-                    </div>
-                    
-                    <?php if (count($imagens) > 1): ?>
-                    <div class="carrossel-miniaturas">
-                        <?php foreach ($imagens as $index => $img): ?>
-                            <div class="miniatura <?= $index == 0 ? 'ativo' : '' ?>" 
-                                 onclick="trocarImagem('<?= htmlspecialchars($img) ?>', this)">
-                                <img src="<?= htmlspecialchars($img) ?>" 
-                                     onerror="this.src='img/sem-foto.jpg'">
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
+        <div class="produto-content">
+            <!-- COLUNA 1: IMAGENS -->
+            <div class="carrossel-container">
+                <!-- Imagem principal -->
+                <img id="imagem-principal" src="<?= htmlspecialchars($imagens[0]) ?>" 
+                     alt="<?= $titulo_pagina ?>" class="imagem-principal"
+                     onerror="this.onerror=null; this.src='img/sem-foto.jpg';">
+                
+                <!-- Miniaturas (se tiver mais de uma imagem) -->
+                <?php if (count($imagens) > 1): ?>
+                <div class="miniaturas">
+                    <?php foreach ($imagens as $index => $img): ?>
+                    <img src="<?= htmlspecialchars($img) ?>" 
+                         alt="Imagem <?= $index + 1 ?>"
+                         class="miniatura <?= $index == 0 ? 'ativa' : '' ?>"
+                         onclick="trocarImagem('<?= htmlspecialchars($img) ?>', this)"
+                         onerror="this.onerror=null; this.src='img/sem-foto.jpg';">
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+            </div>
+            
+            <!-- COLUNA 2: INFORMAÇÕES -->
+            <div class="info-container">
+                <!-- Badges -->
+                <div>
+                    <span class="badge-tipo">
+                        <?= $tipo == 'produto' ? 'PRODUTO' : 'LIVRO' ?>
+                    </span>
+                    <?php if (($tipo == 'produto' && $item['status'] == 'doacao') || ($tipo == 'livro' && empty($item['preco']))): ?>
+                    <span class="badge-doacao">DOAÇÃO</span>
                     <?php endif; ?>
                 </div>
                 
-                <!-- Informações -->
-                <div class="info-container">
-                    <h1><?= htmlspecialchars($item['titulo'] ?? $item['nome']) ?></h1>
-                    
-                    <?php if ($item['status'] == 'doacao' || ($tipo == 'livro' && empty($item['preco']))): ?>
-                        <div class="preco-doacao-grande">DOAÇÃO - GRÁTIS</div>
-                    <?php else: ?>
-                        <div class="preco-grande">R$ <?= number_format($item['preco'], 2, ',', '.') ?></div>
-                    <?php endif; ?>
-                    
-                    <!-- Informações específicas para livros -->
+                <!-- Título -->
+                <h1><?= $titulo_pagina ?></h1>
+                
+                <!-- Descrição -->
+                <?php if (!empty($item['descricao'])): ?>
+                <div class="descricao-box">
+                    <h3><i class="fas fa-align-left"></i> Descrição</h3>
+                    <p><?= nl2br(htmlspecialchars($item['descricao'])) ?></p>
+                </div>
+                <?php endif; ?>
+                
+                <!-- Estado de conservação -->
+                <?php if (!empty($item['estadoconservacao'])): ?>
+                <div class="detalhe-item">
+                    <strong><i class="fas fa-star"></i> Estado de conservação</strong>
+                    <span><?= htmlspecialchars($item['estadoconservacao']) ?></span>
+                </div>
+                <?php endif; ?>
+                
+                <!-- DETALHES ESPECÍFICOS -->
+                <div class="detalhes-grid">
                     <?php if ($tipo == 'livro'): ?>
-                        <p><strong>Autor:</strong> <?= htmlspecialchars($item['autor'] ?? 'Não informado') ?></p>
-                        <p><strong>Editora:</strong> <?= htmlspecialchars($item['editora'] ?? 'Não informado') ?></p>
-                        <p><strong>Ano:</strong> <?= $item['ano'] ?? 'Não informado' ?></p>
-                        <p><strong>ISBN:</strong> <?= htmlspecialchars($item['ISBN'] ?? 'Não informado') ?></p>
-                    <?php endif; ?>
-                    
-                    <!-- Estado de conservação -->
-                    <?php if (!empty($item['estadoconservacao'])): ?>
-                        <p><strong>Estado:</strong> <?= htmlspecialchars($item['estadoconservacao']) ?></p>
-                    <?php endif; ?>
-                    
-                    <!-- Descrição -->
-                    <?php if (!empty($item['descricao'])): ?>
-                        <div class="descricao-box">
-                            <h3>Descrição</h3>
-                            <p><?= nl2br(htmlspecialchars($item['descricao'])) ?></p>
+                        <?php if (!empty($item['autor'])): ?>
+                        <div class="detalhe-item">
+                            <strong><i class="fas fa-user"></i> Autor</strong>
+                            <span><?= htmlspecialchars($item['autor']) ?></span>
                         </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($item['editora'])): ?>
+                        <div class="detalhe-item">
+                            <strong><i class="fas fa-building"></i> Editora</strong>
+                            <span><?= htmlspecialchars($item['editora']) ?></span>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($item['ano'])): ?>
+                        <div class="detalhe-item">
+                            <strong><i class="fas fa-calendar"></i> Ano</strong>
+                            <span><?= htmlspecialchars($item['ano']) ?></span>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($item['ISBN'])): ?>
+                        <div class="detalhe-item">
+                            <strong><i class="fas fa-barcode"></i> ISBN</strong>
+                            <span><?= htmlspecialchars($item['ISBN']) ?></span>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($item['idioma'])): ?>
+                        <div class="detalhe-item">
+                            <strong><i class="fas fa-language"></i> Idioma</strong>
+                            <span><?= htmlspecialchars($item['idioma']) ?></span>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($item['pag'])): ?>
+                        <div class="detalhe-item">
+                            <strong><i class="fas fa-file"></i> Páginas</strong>
+                            <span><?= htmlspecialchars($item['pag']) ?></span>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($item['preco']) && $item['preco'] > 0): ?>
+                        <div class="detalhe-item">
+                            <strong><i class="fas fa-tag"></i> Preço</strong>
+                            <span style="color: #27ae60; font-weight: bold;">
+                                R$ <?= number_format($item['preco'], 2, ',', '.') ?>
+                            </span>
+                        </div>
+                        <?php endif; ?>
+                        
+                    <?php else: // PRODUTO ?>
+                        <?php if (!empty($item['preco']) && $item['preco'] > 0 && $item['status'] != 'doacao'): ?>
+                        <div class="detalhe-item">
+                            <strong><i class="fas fa-tag"></i> Preço</strong>
+                            <span style="color: #27ae60; font-weight: bold;">
+                                R$ <?= number_format($item['preco'], 2, ',', '.') ?>
+                            </span>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($item['peso'])): ?>
+                        <div class="detalhe-item">
+                            <strong><i class="fas fa-weight"></i> Peso</strong>
+                            <span><?= htmlspecialchars($item['peso']) ?> g</span>
+                        </div>
+                        <?php endif; ?>
                     <?php endif; ?>
-                    
-                    <!-- Links para marketplaces -->
-                    <div class="marketplace-links">
-                        <h3 style="width: 100%; margin-bottom: 1rem;">Disponível em:</h3>
-                        <?php foreach ($marketplaces as $key => $mp): 
-                            if (!empty($mp['url'])): ?>
-                            <a href="<?= htmlspecialchars($mp['url']) ?>" 
-                               target="_blank" 
-                               class="mp-link"
-                               title="Ver no <?= strtoupper($key) ?>">
-                                <img src="img/<?= $mp['logo'] ?>" 
-                                     alt="<?= strtoupper($key) ?>" 
-                                     class="mp-logo">
-                                <span class="mp-nome"><?= strtoupper($key) ?></span>
-                            </a>
-                            <?php endif;
-                        endforeach; ?>
+                </div>
+                
+                <!-- MARKETPLACES -->
+                <?php if (!empty($marketplaces_ativos)): ?>
+                <div class="marketplaces-section">
+                    <h3><i class="fas fa-store"></i> Disponível em:</h3>
+                    <div class="marketplaces-grid">
+                        <?php foreach ($marketplaces_ativos as $nome => $mp): ?>
+                        <a href="<?= htmlspecialchars($mp['url']) ?>" 
+                           target="_blank" 
+                           class="marketplace-link"
+                           title="Ver no <?= htmlspecialchars($nome) ?>">
+                            <?php if (file_exists('img/' . $mp['logo'])): ?>
+                            <img src="img/<?= htmlspecialchars($mp['logo']) ?>" alt="<?= htmlspecialchars($nome) ?>">
+                            <?php else: ?>
+                            <i class="fas fa-external-link-alt" style="font-size: 2rem; color: #3498db;"></i>
+                            <?php endif; ?>
+                            <span><?= htmlspecialchars($nome) ?></span>
+                        </a>
+                        <?php endforeach; ?>
                     </div>
                 </div>
+                <?php endif; ?>
             </div>
         </div>
     </main>
     
     <script>
-        // Carrossel simples
+        // FUNÇÃO PARA TROCAR IMAGENS NO CARROSSEL
         function trocarImagem(src, elemento) {
+            // Trocar imagem principal
             document.getElementById('imagem-principal').src = src;
             
             // Atualizar miniaturas ativas
             document.querySelectorAll('.miniatura').forEach(min => {
-                min.classList.remove('ativo');
+                min.classList.remove('ativa');
             });
-            elemento.classList.add('ativo');
+            elemento.classList.add('ativa');
         }
+        
+        // VOLTAR AO TOPO AO CARREGAR
+        window.scrollTo(0, 0);
     </script>
 </body>
 </html>

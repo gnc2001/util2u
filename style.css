@@ -1,31 +1,41 @@
-/* ========== FAIXA 1 SIMPLIFICADA ========== */
+/* ========== FAIXA 1 - CABEÇALHO ========== */
 .faixa-1 {
-    background: linear-gradient(90deg, #2c3e50, #34495e);
-    padding: 1.5rem 5%;
-    text-align: left;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    background: linear-gradient(180deg,#d35400 0%, #fff000 15%, #ffffff 35%, #008aff 100%);
+    border-radius: 30px 30px 0 0; 
+    padding: 0.1rem 5%;
+
 }
 
-.logo-simples {
-    max-width: 1200px;
-    margin: 0 auto;
+.container-cabecalho {
+    max-width: 1400px;
+    margin: 0;
+    padding-left: 0;
 }
 
-.logo-transparente {
-    height: 80px;
+.logo-link {
+    display: inline-block;
+    text-decoration: none;
+}
+
+.logo-natural {
+    height: 45px;
     width: auto;
     max-width: 300px;
-    filter: brightness(0) invert(1); /* Torna branco */
+    transition: opacity 0.3s ease;
 }
 
-/* ========== FAIXA 2 ========== */
+.logo-natural:hover {
+    opacity: 0.9;
+}
+
+/* ========== FAIXA 2 - FILTROS ========== */
 .faixa-2 {
-    background: white;
-    padding: 1.2rem 5%;
+    background: #008aff;
+    padding: 0.8rem 5%;
     border-bottom: 1px solid #eaeaea;
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 80;
 }
 
 .filtros-container {
@@ -93,7 +103,7 @@ select {
     border-color: #2980b9;
 }
 
-/* ========== FAIXA 3 - 6 POR LINHA ========== */
+/* ========== FAIXA 3 - GRID DE PRODUTOS ========== */
 .faixa-3 {
     padding: 2rem 5%;
     max-width: 1400px;
@@ -102,18 +112,18 @@ select {
 
 .grid-container-6 {
     display: grid;
-    grid-template-columns: repeat(6, 1fr); /* 6 colunas */
-    gap: 1rem; /* Espaço menor entre cards */
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1rem;
     justify-items: center;
 }
 
-/* CARD PARA 6 POR LINHA */
+/* CARD INDIVIDUAL */
 .item-card-6 {
     background: white;
     border-radius: 8px;
     width: 100%;
-    max-width: 180px; /* Menor largura */
-    height: 280px; /* Altura reduzida */
+    max-width: 180px;
+    height: 280px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -127,7 +137,7 @@ select {
     box-shadow: 0 6px 15px rgba(0,0,0,0.12);
 }
 
-/* BADGE APENAS PARA DOAÇÃO */
+/* BADGE DOAÇÃO */
 .badge-doacao-simples {
     position: absolute;
     top: 8px;
@@ -142,14 +152,14 @@ select {
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-/* IMAGEM CONTAINER */
+/* IMAGEM */
 .imagem-link-6 {
     display: block;
     text-decoration: none;
 }
 
 .imagem-container-6 {
-    height: 140px; /* Menor altura para imagem */
+    height: 140px;
     overflow: hidden;
     border-bottom: 1px solid #eee;
 }
@@ -225,13 +235,13 @@ select {
 /* ========== RESPONSIVIDADE ========== */
 @media (max-width: 1200px) {
     .grid-container-6 {
-        grid-template-columns: repeat(5, 1fr); /* 5 colunas em telas médias */
+        grid-template-columns: repeat(5, 1fr);
     }
 }
 
 @media (max-width: 992px) {
     .grid-container-6 {
-        grid-template-columns: repeat(4, 1fr); /* 4 colunas */
+        grid-template-columns: repeat(4, 1fr);
     }
     
     .filtros-container {
@@ -239,15 +249,11 @@ select {
         justify-content: center;
         gap: 1rem;
     }
-    
-    .logo-transparente {
-        height: 60px;
-    }
 }
 
 @media (max-width: 768px) {
     .grid-container-6 {
-        grid-template-columns: repeat(3, 1fr); /* 3 colunas */
+        grid-template-columns: repeat(3, 1fr);
     }
     
     .item-card-6 {
@@ -258,11 +264,15 @@ select {
     .imagem-container-6 {
         height: 130px;
     }
+    
+    .logo-natural {
+        height: 50px;
+    }
 }
 
 @media (max-width: 576px) {
     .grid-container-6 {
-        grid-template-columns: repeat(2, 1fr); /* 2 colunas em celular */
+        grid-template-columns: repeat(2, 1fr);
     }
     
     .item-card-6 {
