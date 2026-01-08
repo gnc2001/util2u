@@ -1,6 +1,10 @@
 <?php
 require_once 'config.php';
-// Produtos
+
+// Verifica qual seção o usuário quer ver
+$tipo = $_GET['tipo'] ?? ''; // Pode ser: 'livros', 'produtos', ou vazio (ambos)
+
+// CONSULTA DE PRODUTOS
 $query_produtos = "
     SELECT 
         'produto' as tipo,
@@ -10,17 +14,15 @@ $query_produtos = "
         g.status,
         g.categoria as categoria_id,
         c.cat as categoria_nome,
-        NULL as estante,  -- Produtos não têm estante
         g.olx1, g.olx2, g.ml1, g.ml2, g.ev, g.enjoei, g.amazon, g.shopee
     FROM geral g
     LEFT JOIN categorias c ON g.categoria = c.id
     WHERE (g.excluido IS NULL OR g.excluido = 0)
     AND g.status IN ('disponivel', 'doacao')
     ORDER BY g.id DESC
-    LIMIT 30
 ";
 
-// Livros
+// CONSULTA DE LIVROS
 $query_livros = "
     SELECT 
         'livro' as tipo,
@@ -32,24 +34,36 @@ $query_livros = "
             WHEN l.perdido = 1 THEN 'vendido'
             ELSE 'disponivel'
         END as status,
-        NULL as categoria_id,  -- Livros não têm categoria (ou pode adaptar)
-        NULL as categoria_nome,
         l.estante,
         l.olx1, l.olx2, l.ml1, l.ml2, l.ev, l.enjoei, l.amazon, l.shopee
     FROM livros l
     WHERE (l.vendido IS NULL OR l.vendido = 0) 
     AND (l.perdido IS NULL OR l.perdido = 0)
     ORDER BY l.ID DESC
-    LIMIT 30
 ";
 
+// Executa consultas conforme o tipo selecionado
+$itens = [];
 
-
-$produtos = $pdo->query($query_produtos)->fetchAll();
-$livros = $pdo->query($query_livros)->fetchAll();
-$itens = array_merge($produtos, $livros);
-usort($itens, function($a, $b) { return $b['id'] - $a['id']; });
-$itens = array_slice($itens, 0, 60); // Aumentei para 60 itens
+if ($tipo === 'livros') {
+    // Apenas livros
+    $itens = $pdo->query($query_livros)->fetchAll();
+    $titulo_pagina = "TODOS OS LIVROS";
+    
+} elseif ($tipo === 'produtos') {
+    // Apenas produtos
+    $itens = $pdo->query($query_produtos)->fetchAll();
+    $titulo_pagina = "TODAS AS COISAS";
+    
+} else {
+    // Página inicial: ambos (limitados)
+    $produtos = $pdo->query($query_produtos . " LIMIT 30")->fetchAll();
+    $livros = $pdo->query($query_livros . " LIMIT 30")->fetchAll();
+    $itens = array_merge($produtos, $livros);
+    usort($itens, function($a, $b) { return $b['id'] - $a['id']; });
+    $itens = array_slice($itens, 0, 60);
+    $titulo_pagina = "Página Inicial";
+}
 ?>
 
 <!DOCTYPE html>
@@ -58,7 +72,7 @@ $itens = array_slice($itens, 0, 60); // Aumentei para 60 itens
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Usados & Úteis | Vendas & Doações</title>
-    <link rel="stylesheet" href="style.css?v=4.433">
+    <link rel="stylesheet" href="style.css?v=4.45433">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -131,12 +145,6 @@ $itens = array_slice($itens, 0, 60); // Aumentei para 60 itens
         
         <!-- BOTÕES -->
         <div class="grupo-botoes">
-            <button type="button" class="btn-filtro" data-tipo="livro" id="btn-livros" title="Mostrar apenas livros">
-                <i class="fas fa-book"></i> Só Livros
-            </button>
-            <button type="button" class="btn-filtro" data-tipo="produto" id="btn-coisas" title="Mostrar apenas produtos">
-                <i class="fas fa-box"></i> Só Coisas
-            </button>
             <button type="button" class="btn-filtro" id="btn-todos" title="Mostrar todos os itens">
                 <i class="fas fa-globe"></i> Todos
             </button>
