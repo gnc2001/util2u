@@ -1,40 +1,49 @@
 <?php
 require_once 'config.php';
-
-// CONSULTA CORRIGIDA - MOSTRA TUDO, mesmo sem imagem
+// Produtos
 $query_produtos = "
     SELECT 
         'produto' as tipo,
-        id,
-        nome as titulo,
-        COALESCE(NULLIF(imgprincipal, ''), icone, 'img/sem-foto.jpg') as imagem_principal,
-        status,
-        olx1, olx2, ml1, ml2, ev, enjoei, amazon, shopee
-    FROM geral 
-    WHERE (excluido IS NULL OR excluido = 0)
-    AND status IN ('disponivel', 'doacao')
-    ORDER BY id DESC
+        g.id,
+        g.nome as titulo,
+        COALESCE(NULLIF(g.imgprincipal, ''), g.icone, 'img/sem-foto.jpg') as imagem_principal,
+        g.status,
+        g.categoria as categoria_id,
+        c.cat as categoria_nome,
+        NULL as estante,  -- Produtos não têm estante
+        g.olx1, g.olx2, g.ml1, g.ml2, g.ev, g.enjoei, g.amazon, g.shopee
+    FROM geral g
+    LEFT JOIN categorias c ON g.categoria = c.id
+    WHERE (g.excluido IS NULL OR g.excluido = 0)
+    AND g.status IN ('disponivel', 'doacao')
+    ORDER BY g.id DESC
     LIMIT 30
 ";
 
+// Livros
 $query_livros = "
     SELECT 
         'livro' as tipo,
-        ID as id,
-        titulo,
-        COALESCE(NULLIF(imgprincipal, ''), icone, 'img/sem-foto.jpg') as imagem_principal,
+        l.ID as id,
+        l.titulo,
+        COALESCE(NULLIF(l.imgprincipal, ''), l.icone, 'img/sem-foto.jpg') as imagem_principal,
         CASE 
-            WHEN vendido = 1 THEN 'vendido'
-            WHEN perdido = 1 THEN 'vendido'
+            WHEN l.vendido = 1 THEN 'vendido'
+            WHEN l.perdido = 1 THEN 'vendido'
             ELSE 'disponivel'
         END as status,
-        olx1, olx2, ml1, ml2, ev, enjoei, amazon, shopee
-    FROM livros 
-    WHERE (vendido IS NULL OR vendido = 0) 
-    AND (perdido IS NULL OR perdido = 0)
-    ORDER BY ID DESC
+        NULL as categoria_id,  -- Livros não têm categoria (ou pode adaptar)
+        NULL as categoria_nome,
+        l.estante,
+        l.olx1, l.olx2, l.ml1, l.ml2, l.ev, l.enjoei, l.amazon, l.shopee
+    FROM livros l
+    WHERE (l.vendido IS NULL OR l.vendido = 0) 
+    AND (l.perdido IS NULL OR l.perdido = 0)
+    ORDER BY l.ID DESC
     LIMIT 30
 ";
+
+
 
 $produtos = $pdo->query($query_produtos)->fetchAll();
 $livros = $pdo->query($query_livros)->fetchAll();
@@ -49,7 +58,7 @@ $itens = array_slice($itens, 0, 60); // Aumentei para 60 itens
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Usados & Úteis | Vendas & Doações</title>
-    <link rel="stylesheet" href="style.css?v=4.233">
+    <link rel="stylesheet" href="style.css?v=4.433">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -60,32 +69,93 @@ $itens = array_slice($itens, 0, 60); // Aumentei para 60 itens
 
     </header>
 
-    <!-- FAIXA 2 - Filtros -->
-    <section class="faixa-2">
-        <div class="filtros-container">
-            <div class="contador-total">
-                <i class="fas fa-boxes"></i>
-                <span id="total-itens"><?= count($itens) ?> itens disponíveis</span>
-            </div>
-            
-            <div class="filtro-categoria">
-                <label for="categoria"><i class="fas fa-filter"></i> Tipo:</label>
-                <select id="categoria">
-                    <option value="todos">Todos os itens</option>
-                    <option value="livro">Apenas Livros</option>
-                    <option value="produto">Apenas Produtos</option>
-                    <option value="doacao">Apenas Doações</option>
+<!-- FAIXA 2 - FILTROS INTELIGENTES -->
+<section class="faixa-2">
+    <div class="filtros-container">
+        
+        <!-- BUSCA -->
+        <div class="grupo-busca">
+            <form method="GET" action="" class="form-busca" id="form-busca">
+                <input type="text" 
+                       name="busca" 
+                       placeholder="🔍 Pesquisar itens..." 
+                       value="<?= htmlspecialchars($_GET['busca'] ?? '') ?>"
+                       class="campo-busca"
+                       id="input-busca">
+                <button type="submit" class="btn-busca-lupa" title="Buscar">
+                    <i class="fas fa-search"></i>
+                </button>
+            </form>
+        </div>
+        
+        <div class="separador">|</div>
+        
+        <!-- CATEGORIAS E ESTANTES -->
+        <div class="grupo-categorias">
+            <!-- Categorias -->
+            <div class="filtro-select">
+                <select name="categoria" id="filtro-categoria" class="select-estilizado" title="Filtrar por categoria">
+                    <option value="">📦 TODAS COISAS</option>
+                    <?php
+                    $categorias = $pdo->query("SELECT id, cat FROM categorias ORDER BY cat")->fetchAll();
+                    foreach ($categorias as $cat):
+                        $selected = ($_GET['categoria'] ?? '') == $cat['id'] ? 'selected' : '';
+                    ?>
+                    <option value="<?= $cat['id'] ?>" <?= $selected ?>>
+                        📦 <?= htmlspecialchars($cat['cat']) ?>
+                    </option>
+                    <?php endforeach; ?>
                 </select>
             </div>
             
-            <div class="status-botoes">
-                <button class="btn-status ativo" data-status="todos">Todos</button>
-                <button class="btn-status" data-status="disponivel">À venda</button>
-                <button class="btn-status" data-status="doacao">Doação</button>
+            <span class="texto-ou">ou</span>
+            
+            <!-- Estantes -->
+            <div class="filtro-select">
+                <select name="estante" id="filtro-estante" class="select-estilizado" title="Filtrar por estante">
+                    <option value="">📚 TODOS LIVROS</option>
+                    <?php
+                    $estantes = $pdo->query("SELECT estante FROM estante ORDER BY estante")->fetchAll();
+                    foreach ($estantes as $est):
+                        $selected = ($_GET['estante'] ?? '') == $est['estante'] ? 'selected' : '';
+                    ?>
+                    <option value="<?= htmlspecialchars($est['estante']) ?>" <?= $selected ?>>
+                        📚 <?= htmlspecialchars($est['estante']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
             </div>
         </div>
-    </section>
-
+        
+        <div class="separador">|</div>
+        
+        <!-- BOTÕES -->
+        <div class="grupo-botoes">
+            <button type="button" class="btn-filtro" data-tipo="livro" id="btn-livros" title="Mostrar apenas livros">
+                <i class="fas fa-book"></i> Só Livros
+            </button>
+            <button type="button" class="btn-filtro" data-tipo="produto" id="btn-coisas" title="Mostrar apenas produtos">
+                <i class="fas fa-box"></i> Só Coisas
+            </button>
+            <button type="button" class="btn-filtro" id="btn-todos" title="Mostrar todos os itens">
+                <i class="fas fa-globe"></i> Todos
+            </button>
+        </div>
+        
+        <!-- MENU HAMBÚRGUER -->
+        <button class="menu-hamburguer" id="menu-hamburguer" aria-label="Abrir menu">
+            <i class="fas fa-bars"></i>
+        </button>
+        
+    </div>
+    
+    <!-- MENU MOBILE -->
+    <div class="menu-mobile" id="menu-mobile">
+        <div class="menu-conteudo">
+            <!-- Conteúdo igual, mas responsivo -->
+        </div>
+    </div>
+</section>
     <!-- FAIXA 3 - Grid 6 por linha -->
     <main class="faixa-3">
         <?php if(empty($itens)): ?>
@@ -106,10 +176,11 @@ $itens = array_slice($itens, 0, 60); // Aumentei para 60 itens
                     }
                     ?>
                     
-                    <div class="item-card-6" 
-                         data-tipo="<?= $item['tipo'] ?>" 
-                         data-status="<?= $item['status'] ?>"
-                         data-id="<?= $item['id'] ?>">
+<div class="item-card-6" 
+     data-tipo="<?= $item['tipo'] ?>" 
+     data-categoria="<?= $item['categoria_id'] ?? '' ?>"
+     data-estante="<?= htmlspecialchars($item['estante'] ?? '') ?>"
+     data-id="<?= $item['id'] ?>">
                         
                         <!-- Badge apenas para DOAÇÃO (vermelho) -->
                         <?php if($isDoacao): ?>

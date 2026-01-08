@@ -75,8 +75,8 @@ $titulo_pagina = $tipo == 'produto' ? htmlspecialchars($item['nome']) : htmlspec
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $titulo_pagina ?> - Grande Desapego</title>
-    <link rel="stylesheet" href="style.css">
+    <title><?= $titulo_pagina ?>Usados & Úteis</title>
+    <link rel="stylesheet" href="style.css?v=5">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* ESTILOS ESPECÍFICOS PARA PÁGINA DE DETALHES */
@@ -281,7 +281,7 @@ $titulo_pagina = $tipo == 'produto' ? htmlspecialchars($item['nome']) : htmlspec
     <header class="faixa-1" style="padding: 1rem 5%;">
         <div class="logo-simples">
             <a href="index.php">
-                <img src="img/logo2Upq.png" alt="Grande Desapego" class="logo-transparente">
+                <img src="img/logo2U-120.png" alt="Grande Desapego" class="logo-transparente">
             </a>
         </div>
     </header>
