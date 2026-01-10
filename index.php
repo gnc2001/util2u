@@ -107,9 +107,9 @@ if ($tipo === 'livros') {
       <!-- CATEGORIAS -->
 <div class="filtro-select">
     <select name="categoria" id="filtro-categoria" class="select-estilizado" title="Filtrar por categoria">
-        <option value="">📦 TODOS OS ITENS</option>
+        <option value="">📦 COISAS À VENDA</option>
         <option value="todas_coisas" <?= ($_GET['categoria'] ?? '') == 'todas_coisas' ? 'selected' : '' ?>>
-            📦 TODAS AS COISAS (apenas produtos)
+            📦 TODAS AS COISAS
         </option>
         <option disabled>──────────</option>
         <?php
@@ -129,9 +129,9 @@ if ($tipo === 'livros') {
 <!-- ESTANTES -->
 <div class="filtro-select">
     <select name="estante" id="filtro-estante" class="select-estilizado" title="Filtrar por estante">
-        <option value="">📚 TODOS OS ITENS</option>
+        <option value="">📚 LIVROS</option>
         <option value="todos_livros" <?= ($_GET['estante'] ?? '') == 'todos_livros' ? 'selected' : '' ?>>
-            📚 TODOS OS LIVROS (apenas livros)
+            📚 TODOS OS LIVROS
         </option>
         <option disabled>──────────</option>
         <?php
