@@ -72,7 +72,7 @@ if ($tipo === 'livros') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Usados & Úteis | Vendas & Doações</title>
-    <link rel="stylesheet" href="style.css?v=4.45433">
+    <link rel="stylesheet" href="style.css?v=4.433433">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -104,43 +104,47 @@ if ($tipo === 'livros') {
         
         <div class="separador">|</div>
         
-        <!-- CATEGORIAS E ESTANTES -->
-        <div class="grupo-categorias">
-            <!-- Categorias -->
-            <div class="filtro-select">
-                <select name="categoria" id="filtro-categoria" class="select-estilizado" title="Filtrar por categoria">
-                    <option value="">📦 TODAS COISAS</option>
-                    <?php
-                    $categorias = $pdo->query("SELECT id, cat FROM categorias ORDER BY cat")->fetchAll();
-                    foreach ($categorias as $cat):
-                        $selected = ($_GET['categoria'] ?? '') == $cat['id'] ? 'selected' : '';
-                    ?>
-                    <option value="<?= $cat['id'] ?>" <?= $selected ?>>
-                        📦 <?= htmlspecialchars($cat['cat']) ?>
-                    </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            
-            <span class="texto-ou">ou</span>
-            
-            <!-- Estantes -->
-            <div class="filtro-select">
-                <select name="estante" id="filtro-estante" class="select-estilizado" title="Filtrar por estante">
-                    <option value="">📚 TODOS LIVROS</option>
-                    <?php
-                    $estantes = $pdo->query("SELECT estante FROM estante ORDER BY estante")->fetchAll();
-                    foreach ($estantes as $est):
-                        $selected = ($_GET['estante'] ?? '') == $est['estante'] ? 'selected' : '';
-                    ?>
-                    <option value="<?= htmlspecialchars($est['estante']) ?>" <?= $selected ?>>
-                        📚 <?= htmlspecialchars($est['estante']) ?>
-                    </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-        </div>
-        
+      <!-- CATEGORIAS -->
+<div class="filtro-select">
+    <select name="categoria" id="filtro-categoria" class="select-estilizado" title="Filtrar por categoria">
+        <option value="">📦 TODOS OS ITENS</option>
+        <option value="todas_coisas" <?= ($_GET['categoria'] ?? '') == 'todas_coisas' ? 'selected' : '' ?>>
+            📦 TODAS AS COISAS (apenas produtos)
+        </option>
+        <option disabled>──────────</option>
+        <?php
+        $categorias = $pdo->query("SELECT id, cat FROM categorias ORDER BY cat")->fetchAll();
+        foreach ($categorias as $cat):
+            $selected = ($_GET['categoria'] ?? '') == $cat['id'] ? 'selected' : '';
+        ?>
+        <option value="<?= $cat['id'] ?>" <?= $selected ?>>
+            📦 <?= htmlspecialchars($cat['cat']) ?>
+        </option>
+        <?php endforeach; ?>
+    </select>
+</div>
+
+<span class="texto-ou">ou</span>
+
+<!-- ESTANTES -->
+<div class="filtro-select">
+    <select name="estante" id="filtro-estante" class="select-estilizado" title="Filtrar por estante">
+        <option value="">📚 TODOS OS ITENS</option>
+        <option value="todos_livros" <?= ($_GET['estante'] ?? '') == 'todos_livros' ? 'selected' : '' ?>>
+            📚 TODOS OS LIVROS (apenas livros)
+        </option>
+        <option disabled>──────────</option>
+        <?php
+        $estantes = $pdo->query("SELECT estante FROM estante ORDER BY estante")->fetchAll();
+        foreach ($estantes as $est):
+            $selected = ($_GET['estante'] ?? '') == $est['estante'] ? 'selected' : '';
+        ?>
+        <option value="<?= htmlspecialchars($est['estante']) ?>" <?= $selected ?>>
+            📚 <?= htmlspecialchars($est['estante']) ?>
+        </option>
+        <?php endforeach; ?>
+    </select>
+</div>
         <div class="separador">|</div>
         
         <!-- BOTÕES -->

@@ -511,3 +511,12 @@
     border-color: #e74c3c;
     background-color: #fff5f5;
 }
+
+/* SEPARADOR NOS SELECTS */
+.select-estilizado option[disabled] {
+    color: #bdc3c7;
+    background: #f8f9fa;
+    font-size: 0.8rem;
+    padding: 0.3rem;
+    text-align: center;
+}

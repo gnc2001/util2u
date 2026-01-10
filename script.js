@@ -1,4 +1,4 @@
-// FILTROS SIMPLIFICADOS E FUNCIONAIS
+// FILTROS MELHORADOS - COM "TODAS COISAS" E "TODOS LIVROS"
 document.addEventListener('DOMContentLoaded', function() {
     // Elementos
     const btnTodos = document.getElementById('btn-todos');
@@ -7,14 +7,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const inputBusca = document.getElementById('input-busca');
     const formBusca = document.getElementById('form-busca');
     
-    // Estado simples
+    // Estado
     let filtroAtual = {
-        categoria: '',
-        estante: '',
+        tipo: '',           // 'produto', 'livro', ou '' para todos
+        categoria: '',      // ID da categoria ou 'todas_coisas'
+        estante: '',        // Nome da estante ou 'todos_livros'
         busca: ''
     };
     
-    // ========== FUNÇÃO PRINCIPAL ==========
+    // ========== APLICAR FILTROS ==========
     function aplicarFiltros() {
         const cards = document.querySelectorAll('.item-card-6');
         let visiveis = 0;
@@ -27,25 +28,29 @@ document.addEventListener('DOMContentLoaded', function() {
             
             let mostrar = true;
             
-            // FILTRO 1: CATEGORIA (APENAS para produtos)
-            if (filtroAtual.categoria) {
-                if (tipo !== 'produto') {
-                    mostrar = false; // Não é produto, não mostra
-                } else if (categoria !== filtroAtual.categoria) {
-                    mostrar = false; // É produto mas categoria diferente
+            // FILTRO 1: TIPO GERAL (TODAS COISAS ou TODOS LIVROS)
+            if (filtroAtual.tipo === 'produto' && tipo !== 'produto') {
+                mostrar = false;
+            }
+            if (filtroAtual.tipo === 'livro' && tipo !== 'livro') {
+                mostrar = false;
+            }
+            
+            // FILTRO 2: CATEGORIA ESPECÍFICA (só se for produto)
+            if (filtroAtual.categoria && filtroAtual.categoria !== 'todas_coisas') {
+                if (tipo !== 'produto' || categoria !== filtroAtual.categoria) {
+                    mostrar = false;
                 }
             }
             
-            // FILTRO 2: ESTANTE (APENAS para livros)
-            if (filtroAtual.estante) {
-                if (tipo !== 'livro') {
-                    mostrar = false; // Não é livro, não mostra
-                } else if (estante !== filtroAtual.estante) {
-                    mostrar = false; // É livro mas estante diferente
+            // FILTRO 3: ESTANTE ESPECÍFICA (só se for livro)
+            if (filtroAtual.estante && filtroAtual.estante !== 'todos_livros') {
+                if (tipo !== 'livro' || estante !== filtroAtual.estante) {
+                    mostrar = false;
                 }
             }
             
-            // FILTRO 3: BUSCA (para todos)
+            // FILTRO 4: BUSCA
             if (filtroAtual.busca) {
                 const buscaTermo = filtroAtual.busca.toLowerCase();
                 if (!titulo.includes(buscaTermo)) {
@@ -58,8 +63,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (mostrar) visiveis++;
         });
         
-        // Atualizar contador
         atualizarContador(visiveis);
+        atualizarURL();
     }
     
     function atualizarContador(total) {
@@ -69,52 +74,90 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ========== EVENTOS SIMPLES ==========
+    function atualizarURL() {
+        const params = new URLSearchParams();
+        
+        if (filtroAtual.busca) params.set('busca', filtroAtual.busca);
+        if (filtroAtual.categoria) params.set('categoria', filtroAtual.categoria);
+        if (filtroAtual.estante) params.set('estante', filtroAtual.estante);
+        
+        const novaURL = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.history.replaceState({}, '', novaURL);
+    }
     
-    // BOTÃO "TODOS" - Limpa tudo
+    function limparFiltros() {
+        // Resetar selects
+        if (filtroCategoria) filtroCategoria.value = '';
+        if (filtroEstante) filtroEstante.value = '';
+        if (inputBusca) inputBusca.value = '';
+        
+        // Resetar estado
+        filtroAtual = {
+            tipo: '',
+            categoria: '',
+            estante: '',
+            busca: ''
+        };
+    }
+    
+    // ========== EVENTOS ==========
+    
+    // BOTÃO "TODOS"
     if (btnTodos) {
         btnTodos.addEventListener('click', function() {
-            // Limpar valores
-            if (filtroCategoria) filtroCategoria.value = '';
-            if (filtroEstante) filtroEstante.value = '';
-            if (inputBusca) inputBusca.value = '';
-            
-            // Limpar estado
-            filtroAtual = {
-                categoria: '',
-                estante: '',
-                busca: ''
-            };
-            
-            // Aplicar
+            limparFiltros();
             aplicarFiltros();
         });
     }
     
-    // SELECT CATEGORIA - Só mostra produtos da categoria
+    // SELECT CATEGORIA
     if (filtroCategoria) {
         filtroCategoria.addEventListener('change', function() {
-            // Se selecionou categoria, limpa estante
+            // Se selecionou algo em categoria, limpa estante
             if (this.value && filtroEstante) {
                 filtroEstante.value = '';
                 filtroAtual.estante = '';
+                filtroAtual.tipo = '';
             }
             
-            filtroAtual.categoria = this.value;
+            // Atualizar estado
+            if (this.value === 'todas_coisas') {
+                filtroAtual.tipo = 'produto';
+                filtroAtual.categoria = 'todas_coisas';
+            } else if (this.value) {
+                filtroAtual.tipo = 'produto';
+                filtroAtual.categoria = this.value;
+            } else {
+                filtroAtual.tipo = '';
+                filtroAtual.categoria = '';
+            }
+            
             aplicarFiltros();
         });
     }
     
-    // SELECT ESTANTE - Só mostra livros da estante
+    // SELECT ESTANTE
     if (filtroEstante) {
         filtroEstante.addEventListener('change', function() {
-            // Se selecionou estante, limpa categoria
+            // Se selecionou algo em estante, limpa categoria
             if (this.value && filtroCategoria) {
                 filtroCategoria.value = '';
                 filtroAtual.categoria = '';
+                filtroAtual.tipo = '';
             }
             
-            filtroAtual.estante = this.value;
+            // Atualizar estado
+            if (this.value === 'todos_livros') {
+                filtroAtual.tipo = 'livro';
+                filtroAtual.estante = 'todos_livros';
+            } else if (this.value) {
+                filtroAtual.tipo = 'livro';
+                filtroAtual.estante = this.value;
+            } else {
+                filtroAtual.tipo = '';
+                filtroAtual.estante = '';
+            }
+            
             aplicarFiltros();
         });
     }
@@ -127,7 +170,6 @@ document.addEventListener('DOMContentLoaded', function() {
             aplicarFiltros();
         });
         
-        // Busca em tempo real
         inputBusca.addEventListener('input', function() {
             filtroAtual.busca = this.value.trim();
             aplicarFiltros();
@@ -136,25 +178,43 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // ========== INICIALIZAÇÃO ==========
     function inicializar() {
-        // Verificar URL para filtros salvos
         const urlParams = new URLSearchParams(window.location.search);
         
+        // Categoria
         if (urlParams.has('categoria') && filtroCategoria) {
-            filtroCategoria.value = urlParams.get('categoria');
-            filtroAtual.categoria = filtroCategoria.value;
+            const cat = urlParams.get('categoria');
+            filtroCategoria.value = cat;
+            
+            if (cat === 'todas_coisas') {
+                filtroAtual.tipo = 'produto';
+                filtroAtual.categoria = 'todas_coisas';
+            } else {
+                filtroAtual.tipo = 'produto';
+                filtroAtual.categoria = cat;
+            }
         }
         
+        // Estante
         if (urlParams.has('estante') && filtroEstante) {
-            filtroEstante.value = urlParams.get('estante');
-            filtroAtual.estante = filtroEstante.value;
+            const est = urlParams.get('estante');
+            filtroEstante.value = est;
+            
+            if (est === 'todos_livros') {
+                filtroAtual.tipo = 'livro';
+                filtroAtual.estante = 'todos_livros';
+            } else {
+                filtroAtual.tipo = 'livro';
+                filtroAtual.estante = est;
+            }
         }
         
+        // Busca
         if (urlParams.has('busca') && inputBusca) {
             inputBusca.value = urlParams.get('busca');
             filtroAtual.busca = inputBusca.value;
         }
         
-        // Aplicar filtros iniciais
+        // Aplicar
         setTimeout(aplicarFiltros, 100);
     }
     
