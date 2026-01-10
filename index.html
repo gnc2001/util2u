@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Util2U - Encontre Livros e Produtos</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" href="img/logo2U-120.png">
+</head>
+<body>
+    <!-- Primeira Faixa - Logo -->
+    <header class="header">
+        <div class="container">
+            <div class="logo-container">
+                <img src="img/logo2U-120.png" alt="Util2U Logo" class="logo">
+                <h1 class="site-title">Util2U</h1>
+            </div>
+        </div>
+    </header>
+
+    <!-- Segunda Faixa - Filtros -->
+    <section class="filters-section">
+        <div class="container">
+            <div class="filters-container">
+                <!-- Barra de Pesquisa -->
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Pesquisar produtos e livros...">
+                    <button id="searchBtn"><i class="fas fa-search"></i></button>
+                </div>
+
+                <!-- Filtros -->
+                <div class="filters-row">
+                    <div class="filter-group">
+                        <label for="categoria">Categoria (Coisas):</label>
+                        <select id="categoria">
+                            <option value="">Todas as categorias</option>
+                            <!-- Carregado via AJAX -->
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="estante">Estante (Livros):</label>
+                        <select id="estante">
+                            <option value="">Todas as estantes</option>
+                            <!-- Carregado via AJAX -->
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="ordenacao">Ordenar por:</label>
+                        <select id="ordenacao">
+                            <option value="recentes">Mais Recentes</option>
+                            <option value="antigos">Mais Antigos</option>
+                            <option value="titulo_asc">Título (A-Z)</option>
+                            <option value="titulo_desc">Título (Z-A)</option>
+                        </select>
+                    </div>
+
+                    <button id="limparFiltros" class="btn-limpar">Limpar Filtros</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Terceira Faixa - Produtos -->
+    <main class="main-content">
+        <div class="container">
+            <div id="loading" class="loading">Carregando...</div>
+            <div id="produtosGrid" class="grid-container">
+                <!-- Cards serão carregados aqui via JavaScript -->
+            </div>
+            <div id="semResultados" class="no-results" style="display: none;">
+                <p>Nenhum produto encontrado com os filtros selecionados.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Util2U - Todos os direitos reservados</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
