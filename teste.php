@@ -1,41 +1,61 @@
 <?php
+// test-search.php
 require_once 'config.php';
 
-echo "<h2>Teste de Conexão e Estrutura</h2>";
+echo "<h2>Teste de Pesquisa</h2>";
 
 // Testar conexão
 try {
-    echo "✅ Conexão com banco estabelecida!<br><br>";
+    echo "✅ Conexão OK<br>";
     
-    // Listar tabelas
-    $stmt = $pdo->query("SHOW TABLES");
-    $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    // Testar uma busca simples na tabela geral
+    $sql = "SELECT COUNT(*) as total FROM geral WHERE status = 1";
+    $stmt = $pdo->query($sql);
+    $result = $stmt->fetch();
+    echo "Itens ativos na tabela 'geral': " . $result['total'] . "<br>";
     
-    echo "<h3>Tabelas encontradas:</h3>";
-    echo "<ul>";
-    foreach($tables as $table) {
-        echo "<li>$table</li>";
+    // Testar uma busca simples na tabela livros
+    $sql = "SELECT COUNT(*) as total FROM livros WHERE status = 1";
+    $stmt = $pdo->query($sql);
+    $result = $stmt->fetch();
+    echo "Itens ativos na tabela 'livros': " . $result['total'] . "<br>";
+    
+    // Testar busca com termo específico
+    $termo = "teste"; // Substitua por um termo que você sabe que existe
+    $sql = "SELECT titulo_geral FROM geral WHERE titulo_geral LIKE ? LIMIT 5";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(["%$termo%"]);
+    $resultados = $stmt->fetchAll();
+    
+    echo "<h3>Resultados para '$termo' em 'geral':</h3>";
+    if (count($resultados) > 0) {
+        foreach($resultados as $row) {
+            echo "- " . $row['titulo_geral'] . "<br>";
+        }
+    } else {
+        echo "Nenhum resultado encontrado<br>";
     }
-    echo "</ul>";
     
-    // Ver estrutura de uma tabela exemplo
-    echo "<h3>Estrutura da tabela 'geral':</h3>";
-    $stmt = $pdo->query("DESCRIBE geral");
-    $columns = $stmt->fetchAll();
+    // Testar a query do busca.php
+    echo "<h3>Testando query do busca.php:</h3>";
+    $sqlTeste = "SELECT 
+        g.id_geral as id, 
+        g.titulo_geral as titulo, 
+        g.foto_principal,
+        g.marketplaces,
+        'coisa' as tipo,
+        g.data_cadastro
+    FROM geral g
+    WHERE g.status = 1
+    LIMIT 5";
     
-    echo "<table border='1' cellpadding='5'>";
-    echo "<tr><th>Campo</th><th>Tipo</th><th>Null</th><th>Key</th><th>Default</th><th>Extra</th></tr>";
-    foreach($columns as $col) {
-        echo "<tr>";
-        echo "<td>{$col['Field']}</td>";
-        echo "<td>{$col['Type']}</td>";
-        echo "<td>{$col['Null']}</td>";
-        echo "<td>{$col['Key']}</td>";
-        echo "<td>{$col['Default']}</td>";
-        echo "<td>{$col['Extra']}</td>";
-        echo "</tr>";
-    }
-    echo "</table>";
+    $stmt = $pdo->query($sqlTeste);
+    $testResults = $stmt->fetchAll();
+    
+    echo "Primeiros 5 resultados:<br>";
+    echo "<pre>";
+    print_r($testResults);
+    echo "</pre>";
     
 } catch(PDOException $e) {
     echo "❌ Erro: " . $e->getMessage();

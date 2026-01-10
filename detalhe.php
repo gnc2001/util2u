@@ -1,5 +1,5 @@
 <?php
-// detalhe.php
+// detalhe.php - VERSÃO FINAL com condições reais
 require_once 'config.php';
 
 header('Content-Type: application/json');
@@ -15,6 +15,7 @@ if (!$id || !in_array($tipo, ['coisa', 'livro'])) {
 
 try {
     if ($tipo === 'coisa') {
+        // GERAL: Apenas se status = 1
         $sql = "SELECT 
                 g.id_geral as id,
                 g.titulo_geral as titulo,
@@ -30,6 +31,7 @@ try {
             LEFT JOIN categorias c ON g.categoria_id = c.id_cat
             WHERE g.id_geral = ? AND g.status = 1";
     } else {
+        // LIVROS: Apenas se vendido = FALSE
         $sql = "SELECT 
                 l.id_livro as id,
                 l.titulo_livro as titulo,
@@ -47,7 +49,7 @@ try {
                 e.nome_est as estante_nome
             FROM livros l
             LEFT JOIN estantes e ON l.estante_id = e.id_est
-            WHERE l.id_livro = ? AND l.status = 1";
+            WHERE l.id_livro = ? AND l.vendido = FALSE";
     }
     
     $stmt = $pdo->prepare($sql);
@@ -58,7 +60,7 @@ try {
         $produto['tipo'] = $tipo;
         echo json_encode($produto);
     } else {
-        echo json_encode(['error' => 'Produto não encontrado']);
+        echo json_encode(['error' => 'Produto não encontrado ou não disponível']);
     }
     
 } catch(PDOException $e) {

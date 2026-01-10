@@ -1,5 +1,5 @@
 <?php
-// busca.php - VERSÃO CORRETA baseada na estrutura real
+// busca.php - VERSÃO FINAL com condições reais
 require_once 'config.php';
 
 header('Content-Type: application/json');
@@ -32,6 +32,7 @@ try {
             $ordenacao = $_GET['ordenacao'] ?? 'recentes';
             
             // Query para COISAS (tabela geral)
+            // GERAL: Mostrar apenas onde status = 1 (ativo)
             $sqlCoisas = "SELECT 
                 g.id_geral as id, 
                 g.titulo_geral as titulo, 
@@ -62,6 +63,7 @@ try {
             }
             
             // Query para LIVROS
+            // LIVROS: Mostrar apenas onde vendido = FALSE (não vendido/doado)
             $sqlLivros = "SELECT 
                 l.id_livro as id, 
                 l.titulo_livro as titulo, 
@@ -78,7 +80,7 @@ try {
                 e.nome_est as estante_nome
             FROM livros l
             LEFT JOIN estantes e ON l.estante_id = e.id_est
-            WHERE l.status = 1"; // Apenas itens ativos
+            WHERE l.vendido = FALSE"; // Apenas livros não vendidos/doados
             
             $livrosParams = [];
             
@@ -117,7 +119,7 @@ try {
                     $sql .= " ORDER BY data_cadastro DESC";
             }
             
-            // Limitar resultados (opcional)
+            // Limitar resultados
             $sql .= " LIMIT 100";
             
             // Executar query
